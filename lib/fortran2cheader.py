@@ -98,11 +98,11 @@ def casi(inp):
 """
     outp = []
     letter = re.compile(r'^[\w]$')
-    for c in inp:
-        if letter.match(c):
-            outp.extend(('[', c.lower(), c.upper(), ']'))
+    for char in inp:
+        if letter.match(char):
+            outp.extend(('[', char.lower(), char.upper(), ']'))
         else:
-            outp.append(c)
+            outp.append(char)
     return ''.join(outp)
 
 # SUBROUTINE SXFGeRh (iUnit, oRelName, oNoOAttr, oNoORows, oAttName,
@@ -126,6 +126,7 @@ _SUBROUTINE = re.compile(
     (?P<fName> [\w]+ ) \s*
     ''' + _ARGS + _BIND, re.VERBOSE)
 
+# FUNCTION C_CALLOC(elt_count, elt_size) RESULT(ptr) BIND(C, NAME="calloc")
 _FUNCTION = re.compile(
     r'''
     ^
@@ -153,6 +154,18 @@ _VARTYPE = re.compile(
     [(] \s* (?P<kind> [\w\d=]+ ) \s* [)] \s*
     (?P<modifier> (?: , \s* [*\w()]+ \s* )+ )? :: \s*
     (?P<args> (?: [\w]+ \s* ,? \s* )* )
+    ''', re.VERBOSE)
+
+_TYPE = re.compile(
+r'''(?P<ftype>
+      (?: ''' + casi("INTEGER") + ''' ) |
+      (?: ''' + casi("REAL") + ''' ) |
+      (?: ''' + casi("COMPLEX") + ''' ) |
+      (?: ''' + casi("LOGICAL") + ''' ) |
+      (?: ''' + casi("CHARACTER") + ''' ) |
+      (?: ''' + casi("TYPE") + ''' )
+    )
+    [(] \s* (?P<kind> [\w\d=]+ ) \s* [)]
     ''', re.VERBOSE)
 
 class FortranSourceProvider(object):
@@ -259,6 +272,21 @@ class __Routine(object):
         out += proto
         return out
 
+    def add_arg(self, args, ftype, kind, modifier):
+        """Add argument information to Subroutine information.
+"""
+        c_type = self.f_kinds.get(ftype.lower(), {}).get(kind.lower(), None)
+        if (c_type and
+            modifier and
+            (not 'value' in modifier.lower()
+             or 'dimension' in modifier.lower())):
+            c_type += '*'
+        # if c_type and modifier and 'dimension' in modifier.lower():
+        #     c_type += '*'
+        for arg in ( a.strip().upper() for a in args.split(',') ):
+            if arg in self.uargs:
+                self.argdict[arg][0] = c_type
+        return c_type
 
 class Subroutine(__Routine):
     """Representing Fortran SUBBROUTINEs
@@ -277,52 +305,54 @@ class Subroutine(__Routine):
         self.argdict = dict(( (a.upper(), [None, a]) for a in args ))
         self.result = "void"
 
-    def add_arg(self, args, ftype, kind, modifier):
-        """Add argument information to Subroutine information.
-"""
-        c_type = self.f_kinds.get(ftype.lower(), {}).get(kind.lower(), None)
-        if (c_type and
-            modifier and
-            (not 'value' in modifier.lower()
-             or 'dimension' in modifier.lower())):
-            c_type += '*'
-        # if c_type and modifier and 'dimension' in modifier.lower():
-        #     c_type += '*'
-        for arg in ( a.strip().upper() for a in args.split(',') ):
-            if arg in self.uargs:
-                self.argdict[arg][0] = c_type
-
 class Function(__Routine):
     """Representing Fortran FUNCTIONs
 """
-    pass
+    def __init__(self, line, cName, fName, prefix, result, args,
+                 signed_to_unsigned_char):
+        super(Function, self).__init__(signed_to_unsigned_char)
+        self.comment = Comment(
+            '\n'.join((
+                "%s" % cName,
+                "Generated from FORTRAN routine '%s'" % fName,
+                "FORTRAN declaration:\n    %s" % line)))
+        self.name = cName
+        args = [ a.strip() for a in args if a ]
+        self.uargs = [ a.upper() for a in args ]
+        self.argdict = dict(( (a.upper(), [None, a]) for a in args ))
+        if result:
+            self.resultN = result
+        else:
+            self.resultN = fName
+        prefix = prefix and _TYPE.match(prefix)
+        if prefix:
+            self.result = self.f_kinds.get(
+                prefix.group('ftype').lower(), {}
+                ).get(prefix.group('kind').lower(), None)
+        else:
+            self.result = None
+
+    def add_arg(self, args, ftype, kind, modifier):
+        """Add argument information to Subroutine information.
+"""
+        c_type = super(Function, self).add_arg(args, ftype, kind, modifier)
+        args = [ a.strip().upper() for a in args.split(',') ]
+        if self.resultN.upper() in args:
+            self.result = c_type
 
 class Fortran2CHeader(object):
-
     """Extract a C header file from a Fortran file using
 `BIND(C,name='xxx')` for providing a C compatible interface.
 
 Only arguments with type kinds from `ISO_C_BINDING` module."""
 
-    def __init__(self):
-        self.options, self.args = self.parse_cmdline()
+    def __init__(self, fname, options):
+        self.options = options
+        self.input = fname
 
-        self.input = self.args[0]
         self.basename = ".".join(os.path.basename(self.input).split(".")[:-1])
 
         self.data = FortranSourceProvider(self.input)
-
-    @staticmethod
-    def parse_cmdline():
-        """Parsing the command line options.
-"""
-        parser = OptionParser()
-        parser.add_option("-s", "--signed-to-unsigned-char",
-                          action="store_true", default=False,
-                          help="\
-use 'unsigned char' instead for 'signed char' for 'c_signed_char'")
-        (options, args) = parser.parse_args()
-        return (options, args)
 
     def parse(self):
         """Parse the input file for `ISO_C_BINDING` information.
@@ -359,6 +389,7 @@ use 'unsigned char' instead for 'signed char' for 'c_signed_char'")
                     fName=gdict['fName'],
                     cName=gdict['cName'],
                     args=gdict['args'].split(','),
+                    prefix=gdict['prefix'],
                     result=gdict['result'],
                     line = i)
             elif subr and _VARTYPE.match(i):
@@ -397,10 +428,30 @@ use 'unsigned char' instead for 'signed char' for 'c_signed_char'")
                "",
                "#endif /* %s_H */" % self.basename.upper()) ))
 
+class Fortran2CHeaderCMD(Fortran2CHeader):
+    """Command line interface for Fortran2CHeader
+"""
+    def __init__(self):
+        options, args = self.parse_cmdline()
+        super(Fortran2CHeaderCMD, self).__init__(fname=args[0], options=options)
+
+    @staticmethod
+    def parse_cmdline():
+        """Parsing the command line options.
+"""
+        parser = OptionParser()
+        parser.add_option("-s", "--signed-to-unsigned-char",
+                          action="store_true", default=False,
+                          help="\
+use 'unsigned char' instead for 'signed char' for 'c_signed_char'")
+        (options, args) = parser.parse_args()
+        return (options, args)
+
+
 def main():
     """Main program
 """
-    fFile = Fortran2CHeader()
+    fFile = Fortran2CHeaderCMD()
     fFile.parse()
     fFile.gen_output("%s.h" % fFile.basename)
 
