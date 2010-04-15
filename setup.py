@@ -18,7 +18,9 @@ from distutils.core import setup
 
 setup(name='Fortran2CHeader',
       version='0.1',
-      scripts=['fortran2cheader.py'],
+      package_dir = {'': 'lib'},
+      py_modules = ['fortran2cheader'],
+      scripts=['app/fortran2cheader'],
       )
 
 # Local Variables:
