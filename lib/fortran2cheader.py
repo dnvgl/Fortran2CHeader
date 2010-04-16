@@ -370,9 +370,6 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
         interface = False
         self.info = []
         for i in self.data:
-            print i
-            print _SUBROUTINE.match(i)
-            #raise SystemExit()
             if not interface and _SUBROUTINE.match(i):
                 if subr:
                     self.info.append(subr)
