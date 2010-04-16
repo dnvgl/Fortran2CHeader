@@ -112,7 +112,7 @@ def casi(inp):
 # SUBROUTINE SXFGeRh (iUnit, oRelName, oNoOAttr, oNoORows, oAttName,
 #                     oAttType, oAttLeng) BIND(C,NAME="SXFGeRh")
 _BIND = casi("BIND") + r'''
-[(] \s*
+\( \s*
 (?:
   (?:
     (?P<C>C) |
@@ -120,14 +120,16 @@ _BIND = casi("BIND") + r'''
        \s* (?P<quot>[\'\"]) (?P<cName>[\w]+) (?P=quot)
   ) \s* ,? \s*
 )+
-\s* [)]
+\s* \)
 '''
-_ARGS = '[(] \s* (?P<args> (?: [\w]+ \s* ,? \s* )* ) \s* [)] \s*'
+# This solution becomes to slow to long argument lists.
+# _ARGS = '\( \s* (?P<args> (?: \w+? \s* ,? \s* )* ) \s* \) \s*'
+_ARGS = '\( \s* (?P<args> .+? ) \s* \) \s*'
 _SUBROUTINE = re.compile(
     r'''
     ^
     (?: ''' +casi("SUBROUTINE") +''' ) \s+
-    (?P<fName> [\w]+ ) \s*
+    (?P<fName> \w+ ) \s*
     ''' + _ARGS + _BIND, re.VERBOSE)
 
 # FUNCTION C_CALLOC(elt_count, elt_size) RESULT(ptr) BIND(C, NAME="calloc")
@@ -136,7 +138,7 @@ _FUNCTION = re.compile(
     ^
     (?P<prefix> .+)?? \s*
     (?: ''' + casi("FUNCTION") + ''' ) \s+
-    (?P<fName> [\w]+ ) \s*
+    (?P<fName> \w+ ) \s*
     ''' + _ARGS +
     '''
     (?: ''' + casi("RESULT") + ''' \s*
@@ -155,7 +157,7 @@ _VARTYPE = re.compile(
       (?: ''' + casi("CHARACTER") + ''' ) |
       (?: ''' + casi("TYPE") + ''' )
     )
-    [(] \s* (?P<kind> [\w\d=]+ ) \s* [)] \s*
+    \( \s* (?P<kind> [\w\d=]+ ) \s* \) \s*
     (?P<modifier> (?: , \s* [*\w()]+ \s* )+ )? :: \s*
     (?P<args> (?: [\w]+ \s* ,? \s* )* )
     ''', re.VERBOSE)
@@ -169,7 +171,7 @@ r'''(?P<ftype>
       (?: ''' + casi("CHARACTER") + ''' ) |
       (?: ''' + casi("TYPE") + ''' )
     )
-    [(] \s* (?P<kind> [\w\d=]+ ) \s* [)]
+    \( \s* (?P<kind> [\w\d=]+ ) \s* \)
     ''', re.VERBOSE)
 
 _INTERFACE = re.compile('^' + casi('INTERFACE') +'$')
@@ -368,6 +370,9 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
         interface = False
         self.info = []
         for i in self.data:
+            print i
+            print _SUBROUTINE.match(i)
+            #raise SystemExit()
             if not interface and _SUBROUTINE.match(i):
                 if subr:
                     self.info.append(subr)
