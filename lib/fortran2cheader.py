@@ -3,8 +3,9 @@
 
 u"""
 Generate a C/C++ header file from a Fortran source file using those
-subroutines decorated with Fortran2003 C_ISO_BINDINGS BIND= and C_
-types.
+subroutines decorated with Fortran2003 `C_ISO_BINDINGS` `BIND` and
+`C_*` types. `INTERFACE` blocks are ignored to allow direct usage of C
+function calls in the `FORTRAN` code.
 
 :author: `Berthold Hoellmann <hoel@GL-group.com>`__
 :newfield project: Project
@@ -97,10 +98,13 @@ def casi(inp):
 [aA][bB][cC]
 """
     outp = []
-    letter = re.compile(r'^[\w]$')
+    letter = re.compile(r'^\w$')
+    ws = re.compile(r'^\s$')
     for char in inp:
         if letter.match(char):
             outp.extend(('[', char.lower(), char.upper(), ']'))
+        elif ws.match(char):
+            outp.extend(('\\s',))
         else:
             outp.append(char)
     return ''.join(outp)
@@ -168,6 +172,9 @@ r'''(?P<ftype>
     [(] \s* (?P<kind> [\w\d=]+ ) \s* [)]
     ''', re.VERBOSE)
 
+_INTERFACE = re.compile('^' + casi('INTERFACE') +'$')
+_END_INTERFACE = re.compile('^' + casi('END INTERFACE') +'$')
+
 class FortranSourceProvider(object):
     """Provide concatenated Fortran source lines for analysis.
 """
@@ -201,7 +208,7 @@ and comments.
             if nLine.startswith('&'):
                 nLine = nLine[1:]
             line += nLine
-        return line
+        return line.strip()
 
 class Comment(object):
     """Provide C comments.
@@ -358,9 +365,10 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
         """Parse the input file for `ISO_C_BINDING` information.
 """
         subr = None
+        interface = False
         self.info = []
         for i in self.data:
-            if _SUBROUTINE.match(i):
+            if not interface and _SUBROUTINE.match(i):
                 if subr:
                     self.info.append(subr)
                 line = _SUBROUTINE.match(i)
@@ -375,7 +383,7 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
                     cName=gdict['cName'],
                     args=gdict['args'].split(','),
                     line = i)
-            elif _FUNCTION.match(i):
+            elif not interface and _FUNCTION.match(i):
                 if subr:
                     self.info.append(subr)
                 line = _FUNCTION.match(i)
@@ -392,7 +400,11 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
                     prefix=gdict['prefix'],
                     result=gdict['result'],
                     line = i)
-            elif subr and _VARTYPE.match(i):
+            elif _INTERFACE.match(i):
+                interface = True
+            elif _END_INTERFACE.match(i):
+                interface = False
+            elif not interface and subr and _VARTYPE.match(i):
                 line = _VARTYPE.match(i)
                 gdict = line.groupdict()
                 subr.add_arg(**gdict)
@@ -461,5 +473,5 @@ if __name__ == "__main__":
 # Local Variables:
 # mode:python
 # mode:flyspell
-# compile-command:"python setup.py build"
+# compile-command:"cd .. ; python setup.py build"
 # End:
