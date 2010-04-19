@@ -156,7 +156,7 @@ _VARTYPE = re.compile(
       (?: ''' + casi("CHARACTER") + ''' ) |
       (?: ''' + casi("TYPE") + ''' )
     )
-    \( \s* (?P<kind> [\w\d=]+ ) \s* \) \s*
+    \( \s* (?: ''' + casi("KIND=") + ''' )? (?P<kind> [\w\d=]+ ) \s* \) \s*
     (?P<modifier> (?: , \s* [*\w()]+ \s* )+ )? :: \s*
     (?P<args> (?: [\w]+ \s* ,? \s* )* )
     ''', re.VERBOSE)
