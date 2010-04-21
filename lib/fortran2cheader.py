@@ -123,7 +123,7 @@ _BIND = casi("BIND") + r'''
 '''
 # This solution becomes to slow to long argument lists.
 # _ARGS = '\( \s* (?P<args> (?: \w+? \s* ,? \s* )* ) \s* \) \s*'
-_ARGS = '\( \s* (?P<args> .+? ) \s* \) \s*'
+_ARGS = '\( \s* (?P<args> .*? ) \s* \) \s*'
 _SUBROUTINE = re.compile(
     r'''
     ^
