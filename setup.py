@@ -14,7 +14,7 @@ __date__      = u"$Date$"[5:-1]
 __version__   = "$Revision$"[10:-1]
 __docformat__ = "restructuredtext en"
 
-from distutils.core import setup
+from setuptools import setup
 
 setup(name='Fortran2CHeader',
       version='0.1',
