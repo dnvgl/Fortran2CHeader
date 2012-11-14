@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<cruisecontrol>
+  <!--
+ID: $Id$
+$Date$
+$Revision$
+  -->
+  <project name="Fortran2CHeader" buildafterfailed="false">
+    <listeners>
+      <currentbuildstatuslistener file="${project.listener}"/>
+    </listeners>
+    <modificationset quietperiod="60">
+      <svn RepositoryLocation="${svn.svnsrv.repname}"/>
+    </modificationset>
+    <svnlabelincrementer
+        workingcopypath="${ccinst.workingbase}/${project.name}"
+        labelprefix="svn" separator='-'/>
+    <schedule interval="900">
+      <composite>
+        <exec workingdir="${ccinst.workingbase}/${project.name}"
+              command="svn" args="up"/>
+        <exec workingdir="${ccinst.workingbase}/${project.name}"
+              command="python" args="setup.py build"/>
+        <exec workingdir="${ccinst.workingbase}/${project.name}"
+              command="make" args="test" errorstr="build failed"/>
+        <exec workingdir="${ccinst.workingbase}/${project.name}"
+              command="python" args="setup.py bdist"/>
+        <exec workingdir="${ccinst.workingbase}/${project.name}"
+              command="python" args="setup.py bdist_egg"/>
+      </composite>
+    </schedule>
+    <log dir="${ccinst.home}/logs/${project.name}">
+      <!-- <merge
+           dir="${ccinst.home}/checkout/${project.name}/build/ant/test-results/XML"/>
+           -->
+      <deleteartifacts every="1" unit="MONTH"/>
+    </log>
+    <publishers>
+      <htmlemail
+          buildresultsurl="${url.buildresults}/${project.name}"
+          css="${css.dir}/cruisecontrol.css" logdir="${ccinst.home}/logs/${project.name}"
+          mailhost="${mail.host}" username="" password=""
+          returnaddress="${mail.returnaddress}"
+          subjectprefix="[CruiseControl]" xsldir="${xsl.dir}">
+        <failure address="berthold.hoellmann@gl-group.com"
+                 reportWhenFixed="true"/>
+        <success address="berthold.hoellmann@gl-group.com"/>
+      </htmlemail>
+      <onsuccess>
+        <artifactspublisher dest="${ccinst.home}/artifacts/${project.name}"
+                            moveInsteadOfCopy="true"
+                            dir="${ccinst.workingbase}/${project.name}/dist/"/>
+      </onsuccess>
+    </publishers>
+  </project>
+</cruisecontrol>
