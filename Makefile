@@ -29,15 +29,17 @@ doc:
 build:
 	python setup.py build
 
-IGN = $(shell [ -n "$$(svn propget svn:ignore .)" ] && echo "$$(svn propget svn:ignore .)")
+IGN = $(shell [ -n "$$(svn propget svn:ignore .)" ] && \
+	echo "$$(svn propget svn:ignore .)")
 clean:
 	[ -n "$(IGN)" ] && $(RM) -r $(IGN) || true
 	$(MAKE) -C test clean
 
 TAGS:
-	find src -name \*.py
-	( set -e ;										\
-          find src -name \*.c -o -name \*.h -o -name \*.py -o -name \*.pyx -o -name \*.pxi 	\
+	find lib -name \*.py
+	( set -e ;							\
+	  find lib -name \*.c -o -name \*.h -o -name \*.py -o -name	\
+	      \*.pyx -o -name \*.pxi					\
 	  | xargs etags )
 
 .PHONY: build
