@@ -68,7 +68,7 @@ clean:
 	-find . -type l -and -not -name .\#\* | xargs rm
 
 gen_py_dep.py:
-	svn export https://svnsrv/svn/GLPyFramework/trunk/test/gen_py_dep.py
+	svn export https://svnsrv.germanlloyd.org/svn/GLPyFramework/trunk/test/gen_py_dep.py
 
 %_test.py:	__generic_test_.py
 	[ -f $@ ] || ln -s $< $@
