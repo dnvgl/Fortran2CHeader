@@ -34,6 +34,7 @@ $Revision$
            dir="${ccinst.home}/checkout/${project.name}/build/ant/test-results/XML"/>
            -->
       <deleteartifacts every="1" unit="MONTH"/>
+      <gzip every="1" unit="DAY" />
     </log>
     <publishers>
       <htmlemail
