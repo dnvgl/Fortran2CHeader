@@ -16,7 +16,7 @@ from setuptools import setup, find_packages
 
 if __name__ == '__main__':
     setup(name='Fortran2CHeader',
-          version='0.2',
+          version='0.3',
           package_dir = {'': 'lib'},
           packages=find_packages('lib', exclude=[
               "*.__pycache__", "*.__pycache__.*", "__pycache__.*",
