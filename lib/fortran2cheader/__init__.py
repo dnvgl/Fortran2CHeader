@@ -1,16 +1,10 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-
-u"""
+"""
 Generate a C/C++ header file from a Fortran source file using those
 subroutines decorated with Fortran2003 `C_ISO_BINDINGS` `BIND` and
 `C_*` types. `INTERFACE` blocks are ignored to allow direct usage of C
 function calls in the `FORTRAN` code.
-
-:author: `Berthold Hoellmann <hoel@GL-group.com>`__
-:newfield project: Project
-:project: Fortran2C Header
-:copyright: Copyright (C) 2010 by Germanischer Lloyd AG
 
 Parses FORTRAN 90 syntax.
 
@@ -80,20 +74,26 @@ Translation table taken from
 +-----------+---------------------------+----------------------+
 """
 
-#  ID: $Id$
-__date__      = u"$Date$"[5:-1]
-__version__   = "$Revision$"[10:-1]
-__docformat__ = "restructuredtext en"
+from __future__ import (print_function, division, absolute_import,
+                        unicode_literals)
 
-from optparse import OptionParser
+# ID: $Id$"
+__date__ = "$Date$"[6:-1]
+__version__ = "$Revision$"[10:-1]
+__author__ = "`Berthold Höllmann <berthold.hoellmann@dnvgl.com>`__"
+__copyright__ = "Copyright © 2010 by DNV GL SE"
+
+import argparse
 import os
 import os.path
 import re
+import sys
+
 
 def casi(inp):
     """Make string for case insenitive regular expression string::
 
->>> print casi('abc')
+>>> print(casi('abc'))
 [aA][bB][cC]
 """
     outp = []
@@ -103,7 +103,7 @@ def casi(inp):
         if letter.match(char):
             outp.extend(('[', char.lower(), char.upper(), ']'))
         elif whitespace.match(char):
-            outp.extend(('\\s',))
+            outp.append('\\s')
         else:
             outp.append(char)
     return ''.join(outp)
@@ -114,7 +114,7 @@ _BIND = casi("BIND") + r'''
 \( \s*
 (?:
   (?:
-    (?P<C>C) |
+    (?P<C>[Cc]) |
     (?:''' + casi('NAME') + ''' ) \s* =
        \s* (?P<quot>[\'\"]) (?P<cName>[\w]+) (?P=quot)
   ) \s* ,? \s*
@@ -127,7 +127,7 @@ _ARGS = '\( \s* (?P<args> .*? ) \s* \) \s*'
 _SUBROUTINE = re.compile(
     r'''
     ^
-    (?: ''' +casi("SUBROUTINE") +''' ) \s+
+    (?: ''' + casi("SUBROUTINE") + ''' ) \s+
     (?P<fName> \w+ ) \s*
     ''' + _ARGS + _BIND, re.VERBOSE)
 
@@ -156,13 +156,26 @@ _VARTYPE = re.compile(
       (?: ''' + casi("CHARACTER") + ''' ) |
       (?: ''' + casi("TYPE") + ''' )
     )
-    \( \s* (?: ''' + casi("KIND=") + ''' )? (?P<kind> [\w\d=]+ ) \s* \) \s*
+    \( \s*
+      (?:
+        (?:
+          (?: (?: ''' + casi("KIND=") + ''' )? (?P<kind> [\w\d]+ ) )? |
+          (?: (?: ''' + casi("LEN=") + ''' ) (?P<len> [\d]+ ) )?
+        ) \s* ,?
+      )*
+    \s* \) \s*
     (?P<modifier> (?: , \s* [*\w()]+ \s* )+ )? :: \s*
     (?P<args> (?: [\w]+ \s* ,? \s* )* )
     ''', re.VERBOSE)
 
+_INTENT = re.compile(".*" + casi("intent") + "\s*\(\s*(?P<dir> " +
+                     '(?:' + casi("IN") + ")|" +
+                     '(?:' + casi("OUT") + ")|" +
+                     '(?:' + casi("INOUT") + ")|" +
+                     '(?:' + casi("IN,OUT") + "))\s*\).*", re.VERBOSE)
+
 _TYPE = re.compile(
-r'''(?P<ftype>
+    r'''(?P<ftype>
       (?: ''' + casi("INTEGER") + ''' ) |
       (?: ''' + casi("REAL") + ''' ) |
       (?: ''' + casi("COMPLEX") + ''' ) |
@@ -173,16 +186,16 @@ r'''(?P<ftype>
     \( \s* (?P<kind> [\w\d=]+ ) \s* \)
     ''', re.VERBOSE)
 
-_INTERFACE = re.compile('^' + casi('INTERFACE') +'$')
-_END_INTERFACE = re.compile('^' + casi('END INTERFACE') +'$')
+_INTERFACE = re.compile('^' + casi('INTERFACE') + '$')
+_END_INTERFACE = re.compile('^' + casi('END INTERFACE') + '$')
+
 
 class FortranSourceProvider(object):
     """Provide concatenated Fortran source lines for analysis.
 """
 
-    def __init__(self, fname):
-        self.fname = fname
-        self.file = open(fname, 'r')
+    def __init__(self, data):
+        self.file = data
 
     def __iter__(self):
         return self
@@ -193,7 +206,7 @@ and comments.
 """
         line = None
         while not line:
-            line = self.file.next().strip()
+            line = next(self.file).strip()
             pos = line.find('!')
             if pos >= 0:
                 line = line[:pos]
@@ -211,21 +224,25 @@ and comments.
             line += nLine
         return line.strip()
 
+
 class Comment(object):
     """Provide C comments.
 """
     flavour = "C"
+
     def __init__(self, text):
         self.text = text
 
     def __str__(self):
         text = self.text.split('\n')
         if Comment.flavour == 'C':
-            return "/*\n  %s\n */\n" % ('\n  '.join(text),)
+            return "/*\n%s\n */\n" % ('\n'.join(
+                ('  %s' % i).rstrip() for i in text),)
         elif Comment.flavour == 'pxd':
             return '\n'.join((("# %s" % t).strip() for t in text))
         else:
             return '\n'.join(text)
+
 
 class __Routine(object):
     """Base class for representing Fortran routines.
@@ -260,7 +277,7 @@ class __Routine(object):
             "c_double_complex": "double _Complex",
             "c_long_double_complex": "long double _Complex"},
         'logical': {
-            "c_bool": "char"},#"_Bool"},
+            "c_bool": "char"},  # "_Bool"},
         'character': {
             "c_char": "char"},
         'type': {
@@ -281,7 +298,7 @@ class __Routine(object):
     def __str__(self):
         out = "%s" % self.comment
         args = ', '.join("%s %s" % tuple(self.argdict[arg])
-                             for arg in self.uargs)
+                         for arg in self.uargs)
         if Comment.flavour == 'C':
             if not args:
                 args = 'void'
@@ -294,21 +311,27 @@ class __Routine(object):
         out += proto
         return out
 
-    def add_arg(self, args, ftype, kind, modifier):
+    def add_arg(self, args, ftype, kind, modifier, len):
         """Add argument information to Subroutine information.
 """
         c_type = self.f_kinds.get(ftype.lower(), {}).get(kind.lower(), None)
+        intent = modifier and _INTENT.match(modifier)
+        print("*********** MODIFIER", modifier, intent)
+        if c_type and modifier and intent and \
+           intent.groupdict()['dir'].lower() == 'in':
+            c_type = "const " + c_type
         if (c_type and
             modifier and
-            (not 'value' in modifier.lower()
+            ('value' not in modifier.lower()
              or 'dimension' in modifier.lower())):
             c_type += '*'
         # if c_type and modifier and 'dimension' in modifier.lower():
         #     c_type += '*'
-        for arg in ( a.strip().upper() for a in args.split(',') ):
+        for arg in (a.strip().upper() for a in args.split(',')):
             if arg in self.uargs:
                 self.argdict[arg][0] = c_type
         return c_type
+
 
 class Subroutine(__Routine):
     """Representing Fortran SUBBROUTINEs
@@ -322,10 +345,11 @@ class Subroutine(__Routine):
                 "Generated from FORTRAN routine '%s'" % fName,
                 "FORTRAN declaration:\n    %s" % line)))
         self.name = cName
-        args = [ a.strip() for a in args if a ]
-        self.uargs = [ a.upper() for a in args ]
-        self.argdict = dict(( (a.upper(), [None, a]) for a in args ))
+        args = [a.strip() for a in args if a]
+        self.uargs = [a.upper() for a in args]
+        self.argdict = {a.upper(): [None, a] for a in args}
         self.result = "void"
+
 
 class Function(__Routine):
     """Representing Fortran FUNCTIONs
@@ -339,9 +363,9 @@ class Function(__Routine):
                 "Generated from FORTRAN routine '%s'" % fName,
                 "FORTRAN declaration:\n    %s" % line)))
         self.name = cName
-        args = [ a.strip() for a in args if a ]
-        self.uargs = [ a.upper() for a in args ]
-        self.argdict = dict(( (a.upper(), [None, a]) for a in args ))
+        args = [a.strip() for a in args if a]
+        self.uargs = [a.upper() for a in args]
+        self.argdict = {a.upper(): [None, a] for a in args}
         if result:
             self.resultN = result
         else:
@@ -358,9 +382,10 @@ class Function(__Routine):
         """Add argument information to Subroutine information.
 """
         c_type = super(Function, self).add_arg(args, ftype, kind, modifier)
-        args = [ a.strip().upper() for a in args.split(',') ]
+        args = [a.strip().upper() for a in args.split(',')]
         if self.resultN.upper() in args:
             self.result = c_type
+
 
 class Fortran2CHeader(object):
     """Extract a C header file from a Fortran file using
@@ -368,11 +393,12 @@ class Fortran2CHeader(object):
 
 Only arguments with type kinds from `ISO_C_BINDING` module."""
 
-    def __init__(self, fname, options):
+    def __init__(self, data, options, name):
         self.options = options
-        self.input = fname
+        self.input = data
 
-        self.basename = ".".join(os.path.basename(self.input).split(".")[:-1])
+        self.name = name
+        self.basename = ".".join(os.path.basename(name).split(".")[:-1])
 
         self.data = FortranSourceProvider(self.input)
 
@@ -383,6 +409,7 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
         interface = False
         self.info = []
         for i in self.data:
+            vartype = _VARTYPE.match(i)
             if not interface and _SUBROUTINE.match(i):
                 if subr:
                     self.info.append(subr)
@@ -392,12 +419,12 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
                     subr = None
                     continue
                 subr = Subroutine(
-                    signed_to_unsigned_char=
-                       self.options.signed_to_unsigned_char,
+                    signed_to_unsigned_char=(
+                        self.options.signed_to_unsigned_char),
                     fName=gdict['fName'],
                     cName=gdict['cName'],
                     args=gdict['args'].split(','),
-                    line = i)
+                    line=i)
             elif not interface and _FUNCTION.match(i):
                 if subr:
                     self.info.append(subr)
@@ -407,57 +434,57 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
                     subr = None
                     continue
                 subr = Function(
-                    signed_to_unsigned_char=
-                       self.options.signed_to_unsigned_char,
+                    signed_to_unsigned_char=(
+                        self.options.signed_to_unsigned_char),
                     fName=gdict['fName'],
                     cName=gdict['cName'],
                     args=gdict['args'].split(','),
                     prefix=gdict['prefix'],
                     result=gdict['result'],
-                    line = i)
+                    line=i)
             elif _INTERFACE.match(i):
                 interface = True
             elif _END_INTERFACE.match(i):
                 interface = False
-            elif not interface and subr and _VARTYPE.match(i):
-                line = _VARTYPE.match(i)
-                gdict = line.groupdict()
+            elif (not interface and subr and
+                  vartype and vartype.groupdict()['kind']):
+                gdict = vartype.groupdict()
                 subr.add_arg(**gdict)
 
         if subr:
             self.info.append(subr)
 
-    def gen_output(self, name):
+    def gen_output(self, outf, name):
         """Generating the output file.
 """
         Comment.flavour = "C"
-        outf = open(name, 'w')
-        print >> outf, "\n".join(
-            ( "%s" % s for s in
-              (Comment("\n".join((
-                "%s" % name,
-                "Header file generated from parsing ISO_C_BINDING information",
-                "from %s." % self.input,
-                "",
-                "Generated by %s, version %s." % (os.path.split(__file__)[-1],
-                                                  __version__.strip())))),
-               "",
-               "#ifndef %s_H" % self.basename.upper(),
-               "#define %s_H" % self.basename.upper(),
-               "",
-               "#ifdef __cplusplus",
-               'extern "C" {',
-               "#endif /* __cplusplus */",
-               "") ))
-        print >> outf, "\n".join(( "%s" % s for s in self.info ))
-        print >> outf, "\n".join(
-            ( "%s" % s for s in
-              ("",
-               "#ifdef __cplusplus",
-               '} /* extern "C" */',
-               "#endif /* __cplusplus */",
-               "",
-               "#endif /* %s_H */" % self.basename.upper()) ))
+        print("\n".join(
+            (("%s" % s).rstrip() for s in
+             (Comment("\n".join((
+                 "%s" % name,
+                 "Header file generated from parsing ISO_C_BINDING "
+                 "information",
+                 "from %s." % self.name,
+                 "",
+                 "Generated by %s, version %s." % (sys.argv[0],
+                                                   __version__.strip())))),
+              "",
+              "#ifndef %s_H" % self.basename.upper(),
+              "#define %s_H" % self.basename.upper(),
+              "",
+              "#ifdef __cplusplus",
+              'extern "C" {',
+              "#endif /* __cplusplus */",
+              ""))), file=outf)
+        print("\n".join(("%s" % s for s in self.info)), file=outf)
+        print("\n".join(
+            ("%s" % s for s in
+             ("",
+              "#ifdef __cplusplus",
+              '} /* extern "C" */',
+              "#endif /* __cplusplus */",
+              "",
+              "#endif /* %s_H */" % self.basename.upper()))), file=outf)
 
     def gen_pxd(self, name, header=None):
         """Generating the output file.
@@ -466,37 +493,42 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
             header = "%s.h" % self.basename
         Comment.flavour = "pxd"
         outf = open(name, 'w')
-        print >> outf, "\n".join(
-            ( "%s" % s for s in
-              (Comment("\n".join((
-                "%s" % name,
-                "Cython Header file generated from parsing ISO_C_BINDING information",
-                "from %s." % self.input,
-                "",
-                "Generated by %s, version %s." % (os.path.split(__file__)[-1],
-                                                  __version__.strip())))),
-               "",
-               'cdef extern from "%s" nogil:' % (header,)) ))
-        print >> outf, "\n".join(( "%s" % s for s in self.info ))
+        print("\n".join(
+            (("%s" % s).rstrip() for s in
+             (Comment("\n".join((
+                 "%s" % name,
+                 "Cython Header file generated from parsing ISO_C_BINDING "
+                 "information",
+                 "from %s." % self.input,
+                 "",
+                 "Generated by %s, version %s." % (
+                     os.path.split(sys.argv[0])[-1], __version__.strip())))),
+              "",
+              'cdef extern from "%s" nogil:' % (header,)))), file=outf)
+        print("\n".join((("%s" % s).rstrip() for s in self.info)), file=outf)
+
 
 class Fortran2CHeaderCMD(Fortran2CHeader):
     """Command line interface for Fortran2CHeader
 """
     def __init__(self):
-        options, args = self.parse_cmdline()
-        super(Fortran2CHeaderCMD, self).__init__(fname=args[0], options=options)
+        options = self.parse_cmdline()
+        super(Fortran2CHeaderCMD, self).__init__(
+            data=options.infile, options=options, name=options.infile.name)
 
     @staticmethod
     def parse_cmdline():
         """Parsing the command line options.
 """
-        parser = OptionParser()
-        parser.add_option("-s", "--signed-to-unsigned-char",
-                          action="store_true", default=False,
-                          help="\
-use 'unsigned char' instead for 'signed char' for 'c_signed_char'")
-        (options, args) = parser.parse_args()
-        return (options, args)
+        parser = argparse.ArgumentParser(description='''Generate a C/C++
+header file from a Fortran file using C_ISO_BINDINGS.''')
+        parser.add_argument("infile", type=file, help="Fortran input file")
+        parser.add_argument("--signed-to-unsigned-char", "-s",
+                            action="store_true", default=False,
+                            help="""use 'unsigned char' instead for
+'signed char' for 'c_signed_char'""")
+        options = parser.parse_args()
+        return options
 
 
 def main():
@@ -504,13 +536,15 @@ def main():
 """
     fFile = Fortran2CHeaderCMD()
     fFile.parse()
-    fFile.gen_output("%s.h" % fFile.basename)
+    name = "%s.h" % fFile.basename
+    with open(name, 'w') as ofile:
+        fFile.gen_output(ofile, name)
 
 if __name__ == "__main__":
     main()
 
 # Local Variables:
-# mode:python
-# mode:flyspell
-# compile-command:"cd .. ; python setup.py build"
+# mode: python
+# ispell-local-dictionary: "english"
+# compile-command: "cd .. ; python setup.py build"
 # End:
