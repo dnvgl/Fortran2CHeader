@@ -316,7 +316,6 @@ class __Routine(object):
 """
         c_type = self.f_kinds.get(ftype.lower(), {}).get(kind.lower(), None)
         intent = modifier and _INTENT.match(modifier)
-        print("*********** MODIFIER", modifier, intent)
         if c_type and modifier and intent and \
            intent.groupdict()['dir'].lower() == 'in':
             c_type = "const " + c_type
