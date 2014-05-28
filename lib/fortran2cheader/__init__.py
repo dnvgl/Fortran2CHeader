@@ -221,7 +221,8 @@ class FileType(object):
 
         # all other arguments are used as file names
         try:
-            return codecs.open(filename=string, mode=self._mode, encoding='utf8', errors='ignore')
+            return codecs.open(filename=string, mode=self._mode,
+                               encoding='utf8', errors='ignore')
         except IOError as e:
             message = _("can't open '%s': %s")
             raise ArgumentTypeError(message % (string, e))
@@ -422,7 +423,8 @@ class Function(__Routine):
     def add_arg(self, args, ftype, kind, modifier, len):
         """Add argument information to Subroutine information.
 """
-        c_type = super(Function, self).add_arg(args, ftype, kind, modifier, len)
+        c_type = super(Function, self).add_arg(args, ftype, kind, modifier,
+                                               len)
         args = [a.strip().upper() for a in args.split(',')]
         if self.resultN.upper() in args:
             self.result = c_type
@@ -562,7 +564,8 @@ class Fortran2CHeaderCMD(Fortran2CHeader):
 """
         parser = argparse.ArgumentParser(description='''Generate a C/C++
 header file from a Fortran file using C_ISO_BINDINGS.''')
-        parser.add_argument("infile", type=FileType('r'), help="Fortran input file")
+        parser.add_argument("infile", type=FileType('r'),
+                            help="Fortran input file")
         parser.add_argument("--signed-to-unsigned-char", "-s",
                             action="store_true", default=False,
                             help="""use 'unsigned char' instead for
