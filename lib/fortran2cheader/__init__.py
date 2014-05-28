@@ -84,6 +84,7 @@ __author__ = "`Berthold Höllmann <berthold.hoellmann@dnvgl.com>`__"
 __copyright__ = "Copyright © 2010 by DNV GL SE"
 
 import argparse
+import codecs
 import os
 import os.path
 import re
@@ -188,6 +189,47 @@ _TYPE = re.compile(
 
 _INTERFACE = re.compile('^' + casi('INTERFACE') + '$')
 _END_INTERFACE = re.compile('^' + casi('END INTERFACE') + '$')
+
+
+class FileType(object):
+    """Factory for creating file object types
+
+    Instances of FileType are typically passed as type= arguments to the
+    ArgumentParser add_argument() method.
+
+    Keyword Arguments:
+        - mode -- A string indicating how the file is to be opened. Accepts the
+            same values as the builtin open() function.
+        - bufsize -- The file's desired buffer size. Accepts the same values as
+            the builtin open() function.
+    """
+
+    def __init__(self, mode='r', bufsize=-1):
+        self._mode = mode
+        self._bufsize = bufsize
+
+    def __call__(self, string):
+        # the special argument "-" means sys.std{in,out}
+        if string == '-':
+            if 'r' in self._mode:
+                return _sys.stdin
+            elif 'w' in self._mode:
+                return _sys.stdout
+            else:
+                msg = _('argument "-" with mode %r') % self._mode
+                raise ValueError(msg)
+
+        # all other arguments are used as file names
+        try:
+            return codecs.open(filename=string, mode=self._mode, encoding='utf8', errors='ignore')
+        except IOError as e:
+            message = _("can't open '%s': %s")
+            raise ArgumentTypeError(message % (string, e))
+
+    def __repr__(self):
+        args = self._mode, self._bufsize
+        args_str = ', '.join(repr(arg) for arg in args if arg != -1)
+        return '%s(%s)' % (type(self).__name__, args_str)
 
 
 class FortranSourceProvider(object):
@@ -377,10 +419,10 @@ class Function(__Routine):
         else:
             self.result = None
 
-    def add_arg(self, args, ftype, kind, modifier):
+    def add_arg(self, args, ftype, kind, modifier, len):
         """Add argument information to Subroutine information.
 """
-        c_type = super(Function, self).add_arg(args, ftype, kind, modifier)
+        c_type = super(Function, self).add_arg(args, ftype, kind, modifier, len)
         args = [a.strip().upper() for a in args.split(',')]
         if self.resultN.upper() in args:
             self.result = c_type
@@ -485,17 +527,16 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
               "",
               "#endif /* %s_H */" % self.basename.upper()))), file=outf)
 
-    def gen_pxd(self, name, header=None):
+    def gen_pxd(self, outf, header=None):
         """Generating the output file.
 """
         if header is None:
             header = "%s.h" % self.basename
         Comment.flavour = "pxd"
-        outf = open(name, 'w')
         print("\n".join(
             (("%s" % s).rstrip() for s in
              (Comment("\n".join((
-                 "%s" % name,
+                 "%s.pxd" % self.name,
                  "Cython Header file generated from parsing ISO_C_BINDING "
                  "information",
                  "from %s." % self.input,
@@ -521,7 +562,7 @@ class Fortran2CHeaderCMD(Fortran2CHeader):
 """
         parser = argparse.ArgumentParser(description='''Generate a C/C++
 header file from a Fortran file using C_ISO_BINDINGS.''')
-        parser.add_argument("infile", type=file, help="Fortran input file")
+        parser.add_argument("infile", type=FileType('r'), help="Fortran input file")
         parser.add_argument("--signed-to-unsigned-char", "-s",
                             action="store_true", default=False,
                             help="""use 'unsigned char' instead for
@@ -545,5 +586,5 @@ if __name__ == "__main__":
 # Local Variables:
 # mode: python
 # ispell-local-dictionary: "english"
-# compile-command: "cd .. ; python setup.py build"
+# compile-command: "cd ../.. ; python setup.py build"
 # End:
