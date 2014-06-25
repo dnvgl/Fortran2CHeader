@@ -43,9 +43,9 @@ $Revision$
           mailhost="${mail.host}" username="" password=""
           returnaddress="${mail.returnaddress}"
           subjectprefix="[CruiseControl]" xsldir="${xsl.dir}">
-        <failure address="berthold.hoellmann@gl-group.com"
+        <failure address="berthold.hoellmann@dnvgl.com"
                  reportWhenFixed="true"/>
-        <success address="berthold.hoellmann@gl-group.com"/>
+        <success address="berthold.hoellmann@dnvgl.com"/>
       </htmlemail>
       <onsuccess>
         <artifactspublisher dest="${ccinst.home}/artifacts/${project.name}"
