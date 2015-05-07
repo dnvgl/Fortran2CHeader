@@ -4,21 +4,23 @@
 Unit tests for Fortran2CHeader.
 """
 
-from __future__ import (print_function, division, absolute_import,
-                        unicode_literals)
+from __future__ import (
+    division, print_function, absolute_import, unicode_literals)
+
+# Standard libraries.
+import re
+from cStringIO import StringIO
+
+# Third party libraries.
+import pytest
+
+from .. import _ARGS, _BIND, _VARTYPE, _SUBROUTINE, Fortran2CHeader
 
 # ID: $Id$"
 __date__ = "$Date$"[6:-1]
 __version__ = "$Revision$"[10:-1]
 __author__ = "`Berthold Höllmann <berthold.hoellmann@dnvgl.com>`__"
 __copyright__ = "Copyright © 2014 by DNV GL SE"
-
-from cStringIO import StringIO
-import re
-
-import pytest
-
-from .. import _ARGS, _BIND, _VARTYPE, _SUBROUTINE, Fortran2CHeader
 
 
 class d_opt(object):

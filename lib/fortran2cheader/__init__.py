@@ -74,21 +74,22 @@ Translation table taken from
 +-----------+---------------------------+----------------------+
 """
 
-from __future__ import (print_function, division, absolute_import,
-                        unicode_literals)
+from __future__ import (
+    division, print_function, absolute_import, unicode_literals)
+
+# Standard libraries.
+import os
+import re
+import sys
+import codecs
+import os.path
+import argparse
 
 # ID: $Id$"
 __date__ = "$Date$"[6:-1]
 __version__ = "$Revision$"[10:-1]
 __author__ = "`Berthold Höllmann <berthold.hoellmann@dnvgl.com>`__"
 __copyright__ = "Copyright © 2010 by DNV GL SE"
-
-import argparse
-import codecs
-import os
-import os.path
-import re
-import sys
 
 
 def casi(inp):
@@ -192,6 +193,7 @@ _END_INTERFACE = re.compile('^' + casi('END INTERFACE') + '$')
 
 
 class FileType(object):
+
     """Factory for creating file object types
 
     Instances of FileType are typically passed as type= arguments to the
@@ -234,6 +236,7 @@ class FileType(object):
 
 
 class FortranSourceProvider(object):
+
     """Provide concatenated Fortran source lines for analysis.
 """
 
@@ -269,6 +272,7 @@ and comments.
 
 
 class Comment(object):
+
     """Provide C comments.
 """
     flavour = "C"
@@ -288,6 +292,7 @@ class Comment(object):
 
 
 class __Routine(object):
+
     """Base class for representing Fortran routines.
 """
     f_kinds = {
@@ -376,6 +381,7 @@ class __Routine(object):
 
 
 class Subroutine(__Routine):
+
     """Representing Fortran SUBBROUTINEs
 """
 
@@ -394,8 +400,10 @@ class Subroutine(__Routine):
 
 
 class Function(__Routine):
+
     """Representing Fortran FUNCTIONs
 """
+
     def __init__(self, line, cName, fName, prefix, result, args,
                  signed_to_unsigned_char):
         super(Function, self).__init__(signed_to_unsigned_char)
@@ -416,7 +424,7 @@ class Function(__Routine):
         if prefix:
             self.result = self.f_kinds.get(
                 prefix.group('ftype').lower(), {}
-                ).get(prefix.group('kind').lower(), None)
+            ).get(prefix.group('kind').lower(), None)
         else:
             self.result = None
 
@@ -431,6 +439,7 @@ class Function(__Routine):
 
 
 class Fortran2CHeader(object):
+
     """Extract a C header file from a Fortran file using
 `BIND(C,name='xxx')` for providing a C compatible interface.
 
@@ -551,8 +560,10 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
 
 
 class Fortran2CHeaderCMD(Fortran2CHeader):
+
     """Command line interface for Fortran2CHeader
 """
+
     def __init__(self):
         options = self.parse_cmdline()
         super(Fortran2CHeaderCMD, self).__init__(
