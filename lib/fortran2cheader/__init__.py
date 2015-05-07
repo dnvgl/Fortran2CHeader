@@ -270,6 +270,8 @@ and comments.
             line += nLine
         return line.strip()
 
+    __next__ = next
+
 
 class Comment(object):
 
@@ -369,8 +371,8 @@ class __Routine(object):
             c_type = "const " + c_type
         if (c_type and
             modifier and
-            ('value' not in modifier.lower()
-             or 'dimension' in modifier.lower())):
+            ('value' not in modifier.lower() or
+             'dimension' in modifier.lower())):
             c_type += '*'
         # if c_type and modifier and 'dimension' in modifier.lower():
         #     c_type += '*'
