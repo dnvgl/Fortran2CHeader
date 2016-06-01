@@ -87,7 +87,7 @@ py_build () {
     if [ "$(uname -o)" = "Cygwin" ] ; then
         python setup.py build
     else
-a        virtualenv $VIRTDIR --python=python$PYMAJOR
+        virtualenv $VIRTDIR --python=python$PYMAJOR
     fi
 }
 
