@@ -2,7 +2,7 @@
 
 # Copyright © 2016 by DNV GL SE
 
-# Task  : Testing DNVGLPyFramework
+# Task  : Testing Fortran2CHeader
 
 # Author: Berthold Höllmann <berthold.hoellmann@dnvgl.com>
 
@@ -41,7 +41,7 @@ get_index_server () {
     echo "http://srverc.germanlloyd.org/devpi/dnvgl/dist_$PIPARCH/+simple/"
 }
 
-aif [ ! -e "$PIPCONFPATH/$PIPCONF" ] ; then
+if [ ! -e "$PIPCONFPATH/$PIPCONF" ] ; then
     echo "[global]" > "$PIPCONFPATH/$PIPCONF"
     echo "trusted_host = srverc.germanlloyd.org" >> "$PIPCONFPATH/$PIPCONF"
     echo "index_url = http://srverc.germanlloyd.org/devpi/dnvgl/$PIPARCH/+simple/" >> "$PIPCONFPATH/$PIPCONF"
@@ -63,7 +63,7 @@ gen_pipconf () {
 virt_env () {
     pip$PYMAJOR install --index-url=$INDEX_URL --user --upgrade virtualenv
 
-    VIRTDIR=$(echo "/tmp/DNVGLPyFramework_${TEAMCITY_PROJECT_NAME}_${TEAMCITY_BUILDCONF_NAME}_py$PYVER" | sed "s-[ ;:]-_-g")
+    VIRTDIR=$(echo "/tmp/Fortran2CHeader_${TEAMCITY_PROJECT_NAME}_${TEAMCITY_BUILDCONF_NAME}_py$PYVER" | sed "s-[ ;:]-_-g")
 
     if [ ! -d $VIRTDIR ] ; then
         if [ "$(uname -o)" = "Cygwin" ] ; then
