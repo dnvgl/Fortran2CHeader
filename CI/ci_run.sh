@@ -63,7 +63,7 @@ gen_pipconf () {
 virt_env () {
     pip$PYMAJOR install --index-url=$INDEX_URL --user --upgrade virtualenv
 
-    VIRTDIR=$(echo "/tmp/Fortran2CHeader_${TEAMCITY_PROJECT_NAME}_${TEAMCITY_BUILDCONF_NAME}_py$PYVER" | sed "s-[ ;:]-_-g")
+    VIRTDIR=$(echo "/tmp/Fortran2CHeader_${TEAMCITY_PROJECT_NAME}_${TEAMCITY_BUILDCONF_NAME}_py$PYVER" | sed "s-[ ,;:]-_-g")
 
     if [ ! -d $VIRTDIR ] ; then
         if [ "$(uname -o)" = "Cygwin" ] ; then
