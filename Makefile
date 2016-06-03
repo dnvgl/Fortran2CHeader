@@ -14,17 +14,8 @@ SHELL = /bin/sh
 all:	build
 	@echo "nothing to do"
 
-test: build
-	make -C test test
-
 doc:
 	$(MAKE) -C doc html
-
-%_test:
-	make -C test $@
-
-%:
-	make -C test $@
 
 build:
 	python setup.py build
@@ -44,12 +35,9 @@ TAGS:
 
 .PHONY: build
 .PHONY: doc
-.PHONY: test
 
 # Local Variables:
-# mode:makefile
-# mode:flyspell
-# ispell-local-dictionary:"en"
-# compile-command:"make"
-# coding:utf-8
+# mode: makefile
+# compile-command: "make"
+# coding: utf-8
 # End:
