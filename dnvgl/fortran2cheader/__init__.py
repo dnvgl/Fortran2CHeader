@@ -433,7 +433,7 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
             fname = 'generator'
         else:
             fname = self.input.name
-        print("*** fortranm2cheader - Parsing {}".format(fname))
+        print("*** fortran2cheader - Parsing {}".format(fname))
         subr = None
         interface = False
         self.info = []
@@ -539,17 +539,24 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
 
         if (not self.force and os.path.exists(h_name) and
                 file_newer(h_name, self.input.name)):
-            print("*** fortranm2cheader - output file is newer than input, "
+            print("*** fortran2cheader - output file is newer than input, "
                   "keeping '{}'.".format(h_name))
         else:
+            print("*** fortran2cheader - generating output '{}'.".format(
+                h_name))
             with open(h_name, 'w') as ofile:
                 self.gen_chead(ofile)
 
-        if (self.generate_pxd and not self.force and os.path.exists(h_name) and
+        if not self.generate_pxd:
+            return
+
+        if (not self.force and os.path.exists(h_name) and
                 file_newer(pxd_name, self.input.name)):
-            print("*** fortranm2cheader - output file is newer than input, "
-                  "keeping '{}'.".format(pxd_name))
+            print("*** fortran2cheader - generating output '{}'.".format(
+                pxd_name))
         else:
+            print("*** fortran2cheader - output file is newer than input, "
+                  "keeping '{}'.".format(pxd_name))
             with open(pxd_name, 'w') as ofile:
                 self.gen_pxd(ofile)
 
