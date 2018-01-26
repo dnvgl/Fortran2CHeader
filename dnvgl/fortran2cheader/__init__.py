@@ -118,7 +118,7 @@ _BIND = casi("BIND") + r'''
 (?:
   (?:
     (?P<C>[Cc]) |
-    (?:''' + casi('NAME') + ''' ) \s* =
+    (?:''' + casi('NAME') + r''' ) \s* =
        \s* (?P<quot>[\'\"]) (?P<cName>[\w]+) (?P=quot)
   ) \s* ,? \s*
 )+
@@ -126,11 +126,11 @@ _BIND = casi("BIND") + r'''
 '''
 # This solution becomes to slow to long argument lists.
 # _ARGS = '\( \s* (?P<args> (?: \w+? \s* ,? \s* )* ) \s* \) \s*'
-_ARGS = '\( \s* (?P<args> .*? ) \s* \) \s*'
+_ARGS = r'\( \s* (?P<args> .*? ) \s* \) \s*'
 _SUBROUTINE = re.compile(
     r'''
     ^
-    (?: ''' + casi("SUBROUTINE") + ''' ) \s+
+    (?: ''' + casi("SUBROUTINE") + r''' ) \s+
     (?P<fName> \w+ ) \s*
     ''' + _ARGS + _BIND, re.VERBOSE)
 
@@ -139,11 +139,11 @@ _FUNCTION = re.compile(
     r'''
     ^
     (?P<prefix> .+)?? \s*
-    (?: ''' + casi("FUNCTION") + ''' ) \s+
+    (?: ''' + casi("FUNCTION") + r''' ) \s+
     (?P<fName> \w+ ) \s*
     ''' + _ARGS +
     '''
-    (?: ''' + casi("RESULT") + ''' \s*
+    (?: ''' + casi("RESULT") + r''' \s*
     [(] \s* (?P<result> .+? ) [)] ) \s*
     ''' +
     _BIND, re.VERBOSE)
@@ -157,13 +157,13 @@ _VARTYPE = re.compile(
       (?: ''' + casi("COMPLEX") + ''' ) |
       (?: ''' + casi("LOGICAL") + ''' ) |
       (?: ''' + casi("CHARACTER") + ''' ) |
-      (?: ''' + casi("TYPE") + ''' )
+      (?: ''' + casi("TYPE") + r''' )
     )
     \( \s*
       (?:
         (?:
-          (?: (?: ''' + casi("KIND=") + ''' )? (?P<kind> [\w\d]+ ) )? |
-          (?: (?: ''' + casi("LEN=") + ''' ) (?P<len> [\d]+ ) )?
+          (?: (?: ''' + casi("KIND=") + r''' )? (?P<kind> [\w\d]+ ) )? |
+          (?: (?: ''' + casi("LEN=") + r''' ) (?P<length> [\d]+ ) )?
         ) \s* ,?
       )*
     \s* \) \s*
@@ -171,11 +171,11 @@ _VARTYPE = re.compile(
     (?P<args> (?: [\w]+ \s* ,? \s* )* )
     ''', re.VERBOSE)
 
-_INTENT = re.compile(".*" + casi("intent") + "\s*\(\s*(?P<dir> " +
+_INTENT = re.compile(".*" + casi("intent") + r"\s*\(\s*(?P<dir> " +
                      '(?:' + casi("IN") + ")|" +
                      '(?:' + casi("OUT") + ")|" +
                      '(?:' + casi("INOUT") + ")|" +
-                     '(?:' + casi("IN,OUT") + "))\s*\).*", re.VERBOSE)
+                     '(?:' + casi("IN,OUT") + r"))\s*\).*", re.VERBOSE)
 
 _TYPE = re.compile(
     r'''(?P<ftype>
@@ -184,7 +184,7 @@ _TYPE = re.compile(
       (?: ''' + casi("COMPLEX") + ''' ) |
       (?: ''' + casi("LOGICAL") + ''' ) |
       (?: ''' + casi("CHARACTER") + ''' ) |
-      (?: ''' + casi("TYPE") + ''' )
+      (?: ''' + casi("TYPE") + r''' )
     )
     \( \s* (?P<kind> [\w\d=]+ ) \s* \)
     ''', re.VERBOSE)
@@ -193,47 +193,10 @@ _INTERFACE = re.compile('^' + casi('INTERFACE') + '$')
 _END_INTERFACE = re.compile('^' + casi('END INTERFACE') + '$')
 
 
-class FileType(object):
-
-    """Factory for creating file object types
-
-    Instances of FileType are typically passed as type= arguments to the
-    ArgumentParser add_argument() method.
-
-    Keyword Arguments:
-        - mode -- A string indicating how the file is to be opened. Accepts the
-            same values as the builtin open() function.
-        - bufsize -- The file's desired buffer size. Accepts the same values as
-            the builtin open() function.
-    """
-
-    def __init__(self, mode='r', bufsize=-1):
-        self._mode = mode
-        self._bufsize = bufsize
-
-    def __call__(self, string):
-        # the special argument "-" means sys.std{in,out}
-        if string == '-':
-            if 'r' in self._mode:
-                return _sys.stdin
-            elif 'w' in self._mode:
-                return _sys.stdout
-            else:
-                msg = _('argument "-" with mode %r') % self._mode
-                raise ValueError(msg)
-
-        # all other arguments are used as file names
-        try:
-            return codecs.open(filename=string, mode=self._mode,
-                               encoding='utf8', errors='ignore')
-        except IOError as e:
-            message = _("can't open '%s': %s")
-            raise ArgumentTypeError(message % (string, e))
-
-    def __repr__(self):
-        args = self._mode, self._bufsize
-        args_str = ', '.join(repr(arg) for arg in args if arg != -1)
-        return '%s(%s)' % (type(self).__name__, args_str)
+def file_newer(new, old):
+    n_time = os.path.getmtime(new)
+    o_time = os.path.getmtime(old)
+    return n_time > o_time
 
 
 class FortranSourceProvider(object):
@@ -242,7 +205,7 @@ class FortranSourceProvider(object):
 """
 
     def __init__(self, data):
-        self.file = data
+        self.file = iter(data)
 
     def __iter__(self):
         return self
@@ -252,7 +215,7 @@ class FortranSourceProvider(object):
 and comments.
 """
         line = None
-        while not line:
+        while line is None:
             line = next(self.file).strip()
             pos = line.find('!')
             if pos >= 0:
@@ -288,13 +251,12 @@ class Comment(object):
         if Comment.flavour == 'C':
             return "/*\n%s\n */\n" % ('\n'.join(
                 ('  %s' % i).rstrip() for i in text),)
-        elif Comment.flavour == 'pxd':
+        if Comment.flavour == 'pxd':
             return '\n'.join((("# %s" % t).strip() for t in text))
-        else:
-            return '\n'.join(text)
+        return '\n'.join(text)
 
 
-class __Routine(object):
+class _Routine(object):
 
     """Base class for representing Fortran routines.
 """
@@ -323,6 +285,8 @@ class __Routine(object):
             "c_float": "float",
             "c_double": "double",
             "c_long_double": "long double"},
+
+
         'complex': {
             "c_float_complex": "float _Complex",
             "c_double_complex": "double _Complex",
@@ -340,8 +304,8 @@ class __Routine(object):
             self.f_kinds['integer']["c_signed_char"] = "unsigned char"
         else:
             self.f_kinds['integer']["c_signed_char"] = "signed char"
-        self.argdict = None
-        self.uargs = None
+        self.argdict = {}
+        self.uargs = []
         self.comment = None
         self.name = None
         self.result = None
@@ -352,17 +316,18 @@ class __Routine(object):
                          for arg in self.uargs)
         if Comment.flavour == 'C':
             if not args:
+
                 args = 'void'
             proto = (" ".join(("extern", self.result, self.name)) +
                      '(%s);\n' % args)
         elif Comment.flavour == 'pxd':
-            proto = "\n    %s" % (" ".join((self.result, self.name)) +
-                                  '(%s)\n' % args)
+            proto = "\n    %s" % (
+                " ".join((self.result, self.name)) + '(%s)\n' % args)
 
         out += proto
         return out
 
-    def add_arg(self, args, ftype, kind, modifier, len):
+    def add_arg(self, args, ftype, kind, modifier, length):
         """Add argument information to Subroutine information.
 """
         c_type = self.f_kinds.get(ftype.lower(), {}).get(kind.lower(), None)
@@ -370,10 +335,9 @@ class __Routine(object):
         if c_type and modifier and intent and \
            intent.groupdict()['dir'].lower() == 'in':
             c_type = "const " + c_type
-        if (c_type and
-            modifier and
+        if c_type and modifier and \
             ('value' not in modifier.lower() or
-             'dimension' in modifier.lower())):
+             'dimension' in modifier.lower()):
             c_type += '*'
         # if c_type and modifier and 'dimension' in modifier.lower():
         #     c_type += '*'
@@ -383,7 +347,7 @@ class __Routine(object):
         return c_type
 
 
-class Subroutine(__Routine):
+class Subroutine(_Routine):
 
     """Representing Fortran SUBBROUTINEs
 """
@@ -402,7 +366,7 @@ class Subroutine(__Routine):
         self.result = "void"
 
 
-class Function(__Routine):
+class Function(_Routine):
 
     """Representing Fortran FUNCTIONs
 """
@@ -431,11 +395,11 @@ class Function(__Routine):
         else:
             self.result = None
 
-    def add_arg(self, args, ftype, kind, modifier, len):
+    def add_arg(self, args, ftype, kind, modifier, length):
         """Add argument information to Subroutine information.
 """
-        c_type = super(Function, self).add_arg(args, ftype, kind, modifier,
-                                               len)
+        c_type = super(Function, self).add_arg(
+            args, ftype, kind, modifier, length)
         args = [a.strip().upper() for a in args.split(',')]
         if self.resultN.upper() in args:
             self.result = c_type
@@ -448,18 +412,28 @@ class Fortran2CHeader(object):
 
 Only arguments with type kinds from `ISO_C_BINDING` module."""
 
-    def __init__(self, data, options, name):
-        self.options = options
+    def __init__(self, data, **kw):
         self.input = data
-
-        self.name = name
-        self.basename = ".".join(os.path.basename(name).split(".")[:-1])
+        self.name = data.name
+        self.basename = ".".join(os.path.basename(data.name).split(".")[:-1])
 
         self.data = FortranSourceProvider(self.input)
+
+        self.signed_to_unsigned_char = kw.get(
+            'signed_to_unsigned_char', False)
+        self.force = kw.get('force', False)
+        self.generate_pxd = kw.get('generate_pxd', False)
 
     def parse(self):
         """Parse the input file for `ISO_C_BINDING` information.
 """
+        fname = ''
+        import types
+        if isinstance(self.input, types.GeneratorType):
+            fname = 'generator'
+        else:
+            fname = self.input.name
+        print("*** fortranm2cheader - Parsing {}".format(fname))
         subr = None
         interface = False
         self.info = []
@@ -474,8 +448,7 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
                     subr = None
                     continue
                 subr = Subroutine(
-                    signed_to_unsigned_char=(
-                        self.options.signed_to_unsigned_char),
+                    signed_to_unsigned_char=self.signed_to_unsigned_char,
                     fName=gdict['fName'],
                     cName=gdict['cName'],
                     args=gdict['args'].split(','),
@@ -509,14 +482,14 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
         if subr:
             self.info.append(subr)
 
-    def gen_output(self, outf, name):
+    def gen_chead(self, outf):
         """Generating the output file.
 """
         Comment.flavour = "C"
         print("\n".join(
             (("%s" % s).rstrip() for s in
              (Comment("\n".join((
-                 "%s" % name,
+                 "%s" % outf.name,
                  "Header file generated from parsing ISO_C_BINDING "
                  "information",
                  "from %s." % self.name,
@@ -550,7 +523,7 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
         print("\n".join(
             (("%s" % s).rstrip() for s in
              (Comment("\n".join((
-                 "%s.pxd" % self.name,
+                 "%s" % outf.name,
                  "Cython Header file generated from parsing ISO_C_BINDING "
                  "information",
                  "from %s." % self.input,
@@ -562,6 +535,24 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
               'cdef extern from "%s" nogil:' % (header,)))), file=outf)
         print("\n".join((("%s" % s).rstrip() for s in self.info)), file=outf)
 
+    def gen_output(self, h_name, pxd_name):
+
+        if (not self.force and os.path.exists(h_name) and
+                file_newer(h_name, self.input.name)):
+            print("*** fortranm2cheader - output file is newer than input, "
+                  "keeping '{}'.".format(h_name))
+        else:
+            with open(h_name, 'w') as ofile:
+                self.gen_chead(ofile)
+
+        if (self.generate_pxd and not self.force and os.path.exists(h_name) and
+                file_newer(pxd_name, self.input.name)):
+            print("*** fortranm2cheader - output file is newer than input, "
+                  "keeping '{}'.".format(pxd_name))
+        else:
+            with open(pxd_name, 'w') as ofile:
+                self.gen_pxd(ofile)
+
 
 class Fortran2CHeaderCMD(Fortran2CHeader):
 
@@ -571,32 +562,43 @@ class Fortran2CHeaderCMD(Fortran2CHeader):
     def __init__(self):
         options = self.parse_cmdline()
         super(Fortran2CHeaderCMD, self).__init__(
-            data=options.infile, options=options, name=options.infile.name)
+            data=options.infile,
+            signed_to_unsigned_char=options.signed_to_unsigned_char,
+            force=options.force,
+            generate_pxd=options.generate_pxd)
 
     @staticmethod
     def parse_cmdline():
         """Parsing the command line options.
 """
-        parser = argparse.ArgumentParser(description='''Generate a C/C++
-header file from a Fortran file using C_ISO_BINDINGS.''')
-        parser.add_argument("infile", type=FileType('r'),
+        parser = argparse.ArgumentParser(description='''
+Generate a C/C++ header file from a Fortran file using C_ISO_BINDINGS.''')
+        parser.add_argument("infile", type=argparse.FileType('r'),
                             help="Fortran input file")
         parser.add_argument("--signed-to-unsigned-char", "-s",
                             action="store_true", default=False,
-                            help="""use 'unsigned char' instead for
-'signed char' for 'c_signed_char'""")
-        options = parser.parse_args()
-        return options
+                            help="""
+Use 'unsigned char' instead for 'signed char' for 'c_signed_char'""")
+        parser.add_argument("--force", "-f", action="store_true",
+                            default=False, help="""
+Force generation of output files even if they exist, and are newer
+than the input file.""")
+        parser.add_argument("--generate-pxd", "-p", action="store_true",
+                            default=False, help="""
+Generate also a pxd file for import in Cython process.""")
+        return parser.parse_args()
 
 
 def main():
     """Main program
 """
     fFile = Fortran2CHeaderCMD()
+
+    h_name = "%s.h" % fFile.basename
+    pxd_name = "%s.pxd" % fFile.basename
+
     fFile.parse()
-    name = "%s.h" % fFile.basename
-    with open(name, 'w') as ofile:
-        fFile.gen_output(ofile, name)
+    fFile.gen_output(h_name, pxd_name)
 
 
 if __name__ == "__main__":
