@@ -95,8 +95,8 @@ __copyright__ = "Copyright © 2010 by DNV GL SE"
 def casi(inp):
     """Make string for case insenitive regular expression string::
 
->>> print(casi('abc'))
-[aA][bB][cC]
+>>> casi('abc') == '[aA][bB][cC]'
+True
 """
     outp = []
     letter = re.compile(r'^\w$')
