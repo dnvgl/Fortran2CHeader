@@ -463,7 +463,7 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
                     continue
                 subr = Function(
                     signed_to_unsigned_char=(
-                        self.options.signed_to_unsigned_char),
+                        self.signed_to_unsigned_char),
                     fName=gdict['fName'],
                     cName=gdict['cName'],
                     args=gdict['args'].split(','),
