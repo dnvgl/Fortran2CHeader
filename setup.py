@@ -8,22 +8,16 @@ from __future__ import division, print_function, absolute_import
 
 # Standard libraries.
 import os
-import site
 from setuptools import setup, find_packages
 
-# Third party libraries.
-import pip
+# DNV GL libraries.
+import dnvgl.setup_utils.version as version
 
 # ID: $Id$"
 __date__ = "$Date$"[6:-1]
 __version__ = "$Revision$"[10:-1]
 __author__ = "`Berthold Höllmann <berthold.hoellmann@dnvgl.com>`__"
 __copyright__ = "Copyright © 2010 by DNV GL SE"
-
-pip.main(["install", "DNVGLPyFramework"])
-site.main()
-
-import dnvgl.setup_utils.version as version  # isort:skip # nopep8
 
 
 INSTALL_REQUIRES = ['DNVGLPyFramework']
