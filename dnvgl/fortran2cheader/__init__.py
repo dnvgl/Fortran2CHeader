@@ -422,7 +422,7 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
         self.signed_to_unsigned_char = kw.get(
             'signed_to_unsigned_char', False)
         self.force = kw.get('force', False)
-        self.generate_pxd = kw.get('generate_pxd', False)
+        self.generate_pxd = kw.get('generate_pxd', True)
 
     def parse(self):
         """Parse the input file for `ISO_C_BINDING` information.
