@@ -550,7 +550,7 @@ Only arguments with type kinds from `ISO_C_BINDING` module."""
         if not self.generate_pxd:
             return
 
-        if (not self.force and os.path.exists(h_name) and
+        if (not self.force and os.path.exists(pxd_name) and
                 file_newer(pxd_name, self.input.name)):
             print("*** fortran2cheader - generating output '{}'.".format(
                 pxd_name))
