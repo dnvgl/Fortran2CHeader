@@ -1,0 +1,27 @@
+
+# /
+/.cache
+/.coverage
+/.eggs
+/.tox
+/.venv
+/Fortran2CHeader.egg-info
+/TAGS
+/build
+/coverage.xml
+/dist
+/htmlcov
+/pytest_main.xml
+/sxf_c.h
+/sxf_c.h_ref
+
+# /dnvgl/
+/dnvgl/sxf_c.h
+/dnvgl/.ropeproject
+/dnvgl/Fortran2CHeader.egg-info
+
+# /dnvgl/fortran2cheader/
+/dnvgl/fortran2cheader/__version__.py
+
+# /dnvgl/fortran2cheader/testing/
+/dnvgl/fortran2cheader/testing/__pycache__
