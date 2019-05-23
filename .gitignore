@@ -23,5 +23,6 @@
 # /dnvgl/fortran2cheader/
 /dnvgl/fortran2cheader/__version__.py
 
-# /dnvgl/fortran2cheader/testing/
-/dnvgl/fortran2cheader/testing/__pycache__
+**/__pycache__
+**/*.pyc
+venv/
