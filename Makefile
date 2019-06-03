@@ -33,6 +33,9 @@ TAGS:
 	      \*.pyx -o -name \*.pxi					\
 	  | xargs etags )
 
+test:
+	true
+
 .PHONY: build
 .PHONY: doc
 
