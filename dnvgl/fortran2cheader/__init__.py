@@ -322,7 +322,8 @@ class _Routine(object):
                      '(%s);\n' % args)
         elif Comment.flavour == 'pxd':
             proto = "\n    %s" % (
-                " ".join((self.result, self.name)) + '(%s)\n' % args)
+                " ".join((self.result, self.name)) +
+                '(%s)\n' % args.replace('_Complex', 'complex'))
 
         out += proto
         return out
